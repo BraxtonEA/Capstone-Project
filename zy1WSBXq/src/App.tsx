@@ -256,3 +256,182 @@ const WM_CODES = [
   { code: "WMTAP", label: "Taper Per Schedule", category: "Instruction" },
 ];
 
+const CODE_DB = {
+  Universal: UNIVERSAL.map((c) => ({ ...c, system: "Universal" })),
+  CVS: CVS_CODES.map((c) => ({ ...c, system: "CVS" })),
+  Walgreens: WG_CODES.map((c) => ({ ...c, system: "Walgreens" })),
+  Walmart: WM_CODES.map((c) => ({ ...c, system: "Walmart" })),
+};
+
+const ALL_CODES = Object.values(CODE_DB).flat();
+const SYSTEMS = ["Universal", "CVS", "Walgreens", "Walmart"];
+
+const COLORS = {
+  Universal: {
+    bg: "#0d1b3e",
+    accent: "#4A90D9",
+    dim: "#1e3a5f",
+    text: "#a8c8f0",
+  },
+  CVS: { bg: "#1a0505", accent: "#e53e3e", dim: "#7f1d1d", text: "#fca5a5" },
+  Walgreens: {
+    bg: "#051a0a",
+    accent: "#38a169",
+    dim: "#14532d",
+    text: "#86efac",
+  },
+  Walmart: {
+    bg: "#05101a",
+    accent: "#3b82f6",
+    dim: "#1e3a5f",
+    text: "#93c5fd",
+  },
+};
+
+const gc = (sys) => COLORS[sys] || COLORS.Universal;
+
+const MODES = [
+  { id: "sig2sig", label: "SIG → SIG", sub: "Code to code" },
+  { id: "en2sig", label: "English → SIG", sub: "Sentence to codes" },
+  { id: "sig2en", label: "SIG → English", sub: "Codes to sentence" },
+];
+
+export default function RxBridge() {
+  const [tab, setTab] = useState("translate");
+  const [mode, setMode] = useState("sig2sig");
+  const [input, setInput] = useState("");
+  const [fromSys, setFromSys] = useState("Universal");
+  const [toSys, setToSys] = useState("CVS");
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filterSys, setFilterSys] = useState("All");
+  const [filterCat, setFilterCat] = useState("All");
+
+  const fc = gc(fromSys);
+  const tc = gc(toSys);
+
+  const EXAMPLES = {
+    sig2sig: [
+      "1TAB PO BID WFOOD #30 RF1",
+      "CVDQD CVWFOOD CV90D CVR3",
+      "WGBID WG2T WGWFOOD WG30 WGR0",
+    ],
+    en2sig: [
+      "Take 1 capsule every night at bedtime for 30 days",
+      "Take 2 tablets by mouth twice daily with food for 90 days with 3 refills",
+      "Inhale 2 puffs every 4 hours as needed for shortness of breath",
+    ],
+    sig2en: [
+      "1CAP PO QHS #30 NR",
+      "2TAB PO BID WFOOD #90 RF3",
+      "2PUFF INH Q4H PRN",
+    ],
+  };
+
+  async function translate() {
+    if (!input.trim()) return;
+    setBusy(true);
+    setErr(null);
+    setResult(null);
+
+    const fromCodes = [...CODE_DB[fromSys], ...CODE_DB.Universal];
+    const toCodes = [...CODE_DB[toSys], ...CODE_DB.Universal];
+
+    let sysPrompt = "";
+    let userMsg = "";
+
+    if (mode === "en2sig") {
+      sysPrompt = `You are a pharmacy SIG encoder. Convert plain-English prescription instructions to ${toSys} SIG codes. Available codes: ${JSON.stringify(
+        toCodes
+      )}. Reply with ONLY a JSON object, no markdown wrappers, no explanation. Use this exact structure: {"translatedSig":"string","parsedComponents":{"dose":"string","route":"string","frequency":"string","duration":"string","refills":"string","instructions":"string"},"mappings":[{"original":"string","translated":"string","label":"string"}],"patientInstructions":"string","pharmacistNotes":"string","warnings":["string"]}`;
+      userMsg = `Convert to ${toSys} SIG codes: ${input}`;
+    } else if (mode === "sig2en") {
+      sysPrompt = `You are a pharmacy SIG decoder. Convert ${fromSys} SIG codes to plain English. Reference codes: ${JSON.stringify(
+        fromCodes
+      )}. Reply with ONLY a JSON object, no markdown wrappers, no explanation. Use this exact structure: {"translatedSig":"string","decodedComponents":{"dose":"string","route":"string","frequency":"string","duration":"string","refills":"string","instructions":"string"},"mappings":[{"original":"string","translated":"string","label":"string"}],"patientInstructions":"string","pharmacistNotes":"string","warnings":["string"]}`;
+      userMsg = `Decode to plain English: ${input}`;
+    } else {
+      sysPrompt = `You are a pharmacy SIG translator. Convert ${fromSys} SIG codes to ${toSys} SIG codes. Source codes: ${JSON.stringify(
+        fromCodes
+      )}. Target codes: ${JSON.stringify(
+        toCodes
+      )}. Reply with ONLY a JSON object, no markdown wrappers, no explanation. Use this exact structure: {"translatedSig":"string","mappings":[{"original":"string","translated":"string","label":"string"}],"patientInstructions":"string","pharmacistNotes":"string","warnings":["string"]}`;
+      userMsg = `Translate from ${fromSys} to ${toSys}: ${input}`;
+    }
+
+    try {
+      const API_KEY =
+        TOKEN
+
+      const res = await fetch(
+        "https://models.inference.ai.azure.com/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: sysPrompt },
+              { role: "user", content: userMsg },
+            ],
+            temperature: 0.1,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(
+          data?.error?.message || "GitHub API error " + res.status
+        );
+      }
+
+      let raw = data?.choices?.[0]?.message?.content || "";
+      if (!raw) throw new Error("Empty response from API");
+
+      raw = raw.replace(/```json|```/gi, "").trim();
+
+      const start = raw.indexOf("{");
+      const end = raw.lastIndexOf("}");
+      if (start === -1 || end === -1) {
+        throw new Error("No JSON object found in response.");
+      }
+
+      const jsonStr = raw.slice(start, end + 1);
+      const parsed = JSON.parse(jsonStr);
+
+      if (!parsed.translatedSig) {
+        throw new Error("Missing translatedSig fields in response structure");
+      }
+      setResult(parsed);
+    } catch (e) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      translate();
+    }
+  };
+
+  const cats = ["All", ...new Set(ALL_CODES.map((c) => c.category))];
+  const filtered = ALL_CODES.filter((c) => {
+    if (filterSys !== "All" && c.system !== filterSys) return false;
+    if (filterCat !== "All" && c.category !== filterCat) return false;
+    if (
+      search &&
+      !c.code.toLowerCase().includes(search.toLowerCase()) &&
+      !c.label.toLowerCase().includes(search.toLowerCase())
+    )
+      return false;
+    return true;
+  });
