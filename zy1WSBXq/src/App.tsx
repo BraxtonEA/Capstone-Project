@@ -435,3 +435,944 @@ export default function RxBridge() {
       return false;
     return true;
   });
+
+  const confColor = (v) =>
+    v === "HIGH" ? "#4ade80" : v === "MEDIUM" ? "#fbbf24" : "#f87171";
+
+  const S = {
+    page: {
+      minHeight: "100vh",
+      background: "#060d1a",
+      color: "#e2e8f0",
+      fontFamily: "system-ui, sans-serif",
+    },
+    header: {
+      background: "#0a1628",
+      borderBottom: "1px solid #1e2d45",
+      padding: "0 24px",
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
+    },
+    hinner: {
+      maxWidth: 1100,
+      margin: "0 auto",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: 60,
+    },
+    logo: { display: "flex", alignItems: "center", gap: 10 },
+    logobx: {
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      background: "linear-gradient(135deg,#2563eb,#4A90D9)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 800,
+      fontSize: 14,
+      color: "#fff",
+    },
+    main: { maxWidth: 1100, margin: "0 auto", padding: "24px 24px" },
+    card: {
+      background: "#0d1525",
+      border: "1px solid #1e2d45",
+      borderRadius: 12,
+    },
+    input: {
+      width: "100%",
+      background: "#060d1a",
+      border: "1px solid #1e2d45",
+      borderRadius: 8,
+      padding: "10px 14px",
+      color: "#e2e8f0",
+      fontSize: 14,
+      outline: "none",
+      boxSizing: "border-box",
+    },
+    btn: {
+      padding: "10px 18px",
+      borderRadius: 8,
+      border: "none",
+      cursor: "pointer",
+      fontWeight: 600,
+      fontSize: 13,
+    },
+    label: {
+      fontSize: 11,
+      color: "#64748b",
+      fontWeight: 700,
+      letterSpacing: "1px",
+      display: "block",
+      marginBottom: 6,
+    },
+  };
+
+  return (
+    <div style={S.page}>
+      {/* Header */}
+      <header style={S.header}>
+        <div style={S.hinner}>
+          <div style={S.logo}>
+            <div style={S.logobx}>Rx</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>
+                RxBridge
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "#475569",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                AI PRESCRIPTION TRANSLATOR
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {["translate", "library"].map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                style={{
+                  ...S.btn,
+                  background: tab === t ? "#1e3a5f" : "transparent",
+                  color: tab === t ? "#4A90D9" : "#64748b",
+                  borderBottom:
+                    tab === t ? "2px solid #4A90D9" : "2px solid transparent",
+                  borderRadius: "8px 8px 0 0",
+                }}
+              >
+                {t === "translate" ? "⚡ Translate" : "📚 SIG Library"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <main style={S.main}>
+        {/* ── TRANSLATE ── */}
+        {tab === "translate" && (
+          <div>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <h1
+                style={{
+                  fontSize: 26,
+                  fontWeight: 800,
+                  margin: "0 0 6px",
+                  color: "#fff",
+                }}
+              >
+                Universal Prescription Translator
+              </h1>
+              <p style={{ color: "#64748b", fontSize: 13, margin: 0 }}>
+                Convert SIG codes between systems or encode/decode plain-English
+                instructions
+              </p>
+            </div>
+
+            {/* Mode toggle */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                justifyContent: "center",
+                marginBottom: 20,
+              }}
+            >
+              {MODES.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    setMode(m.id);
+                    setResult(null);
+                    setErr(null);
+                    setInput("");
+                  }}
+                  style={{
+                    ...S.btn,
+                    background:
+                      mode === m.id
+                        ? "linear-gradient(135deg,#1e3a5f,#2563eb)"
+                        : "#0d1525",
+                    color: mode === m.id ? "#fff" : "#64748b",
+                    border:
+                      "1px solid " + (mode === m.id ? "#2563eb" : "#1e2d45"),
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 2,
+                    padding: "10px 16px",
+                  }}
+                >
+                  <span style={{ fontSize: 13 }}>{m.label}</span>
+                  <span style={{ fontSize: 10, opacity: 0.6 }}>{m.sub}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* System selectors */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 48px 1fr",
+                gap: 12,
+                marginBottom: 16,
+                alignItems: "center",
+              }}
+            >
+              {/* FROM */}
+              <div
+                style={{
+                  ...S.card,
+                  padding: 14,
+                  border: "1px solid " + fc.dim,
+                }}
+              >
+                <span style={S.label}>
+                  {mode === "en2sig" ? "FROM" : "FROM SYSTEM"}
+                </span>
+                {mode === "en2sig" ? (
+                  <div
+                    style={{ color: "#4A90D9", fontWeight: 700, paddingTop: 4 }}
+                  >
+                    Plain English
+                  </div>
+                ) : (
+                  <select
+                    value={fromSys}
+                    onChange={(e) => setFromSys(e.target.value)}
+                    style={{
+                      ...S.input,
+                      color: fc.accent,
+                      border: "1px solid " + fc.dim,
+                    }}
+                  >
+                    {SYSTEMS.map((s) => (
+                      <option key={s} style={{ background: "#060d1a" }}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Swap */}
+              <button
+                onClick={() => {
+                  if (mode === "sig2sig") {
+                    const t = fromSys;
+                    setFromSys(toSys);
+                    setToSys(t);
+                  }
+                }}
+                style={{
+                  ...S.btn,
+                  background: "#0d1525",
+                  border: "1px solid #1e2d45",
+                  color: "#4A90D9",
+                  fontSize: 18,
+                  padding: 0,
+                  width: 48,
+                  height: 48,
+                }}
+              >
+                ⇄
+              </button>
+
+              {/* TO */}
+              <div
+                style={{
+                  ...S.card,
+                  padding: 14,
+                  border: "1px solid " + tc.dim,
+                }}
+              >
+                <span style={S.label}>
+                  {mode === "sig2en" ? "TO" : "TO SYSTEM"}
+                </span>
+                {mode === "sig2en" ? (
+                  <div
+                    style={{ color: "#38a169", fontWeight: 700, paddingTop: 4 }}
+                  >
+                    Plain English
+                  </div>
+                ) : (
+                  <select
+                    value={toSys}
+                    onChange={(e) => setToSys(e.target.value)}
+                    style={{
+                      ...S.input,
+                      color: tc.accent,
+                      border: "1px solid " + tc.dim,
+                    }}
+                  >
+                    {SYSTEMS.map((s) => (
+                      <option key={s} style={{ background: "#060d1a" }}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            {/* Input box */}
+            <div style={{ ...S.card, marginBottom: 12, overflow: "hidden" }}>
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderBottom: "1px solid #1e2d45",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#4A90D9",
+                    fontWeight: 700,
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {mode === "en2sig"
+                    ? "PLAIN ENGLISH INPUT"
+                    : mode === "sig2en"
+                    ? "SIG CODE INPUT"
+                    : "SIG CODE INPUT"}
+                </span>
+                <button
+                  onClick={() => {
+                    setInput("");
+                    setResult(null);
+                    setErr(null);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#475569",
+                    cursor: "pointer",
+                    fontSize: 12,
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={4}
+                placeholder={
+                  mode === "en2sig"
+                    ? "e.g. Take 1 capsule every night at bedtime for 30 days"
+                    : mode === "sig2en"
+                    ? "e.g. 1CAP PO QHS #30 NR"
+                    : "e.g. 1TAB PO BID WFOOD #30 RF1"
+                }
+                style={{
+                  ...S.input,
+                  border: "none",
+                  borderRadius: 0,
+                  resize: "vertical",
+                  lineHeight: 1.6,
+                  fontFamily:
+                    mode === "en2sig" ? "system-ui,sans-serif" : "monospace",
+                  fontSize: 14,
+                  padding: 14,
+                }}
+              />
+            </div>
+
+            {/* Example chips */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                marginBottom: 14,
+              }}
+            >
+              <span
+                style={{ fontSize: 11, color: "#475569", alignSelf: "center" }}
+              >
+                Try:
+              </span>
+              {EXAMPLES[mode].map((ex) => (
+                <button
+                  key={ex}
+                  onClick={() => {
+                    setInput(ex);
+                    setResult(null);
+                    setErr(null);
+                  }}
+                  style={{
+                    ...S.btn,
+                    background: "#0d1525",
+                    border: "1px solid #1e2d45",
+                    color: "#4A90D9",
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    fontFamily: mode === "en2sig" ? "inherit" : "monospace",
+                  }}
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+
+            {/* Translate button */}
+            <button
+              onClick={translate}
+              disabled={busy || !input.trim()}
+              style={{
+                width: "100%",
+                padding: 13,
+                borderRadius: 10,
+                border: "none",
+                background: busy
+                  ? "#1e3a5f"
+                  : "linear-gradient(135deg,#2563eb,#4A90D9)",
+                color: "#fff",
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: busy ? "not-allowed" : "pointer",
+              }}
+            >
+              {busy
+                ? "⏳ Processing..."
+                : mode === "en2sig"
+                ? `Encode English → ${toSys} SIG`
+                : mode === "sig2en"
+                ? `Decode ${fromSys} SIG → English`
+                : `Translate ${fromSys} → ${toSys}`}
+            </button>
+
+            {/* Error */}
+            {err && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 14,
+                  background: "#1c0505",
+                  border: "1px solid #7f1d1d",
+                  borderRadius: 10,
+                  color: "#fca5a5",
+                  fontSize: 13,
+                  wordBreak: "break-all",
+                }}
+              >
+                ⚠️ {err}
+              </div>
+            )}
+
+            {/* Result */}
+            {result && (
+              <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+                {/* Main output */}
+                <div
+                  style={{
+                    ...S.card,
+                    overflow: "hidden",
+                    border:
+                      "1px solid " + (mode === "sig2en" ? "#14532d" : tc.dim),
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      background:
+                        mode === "sig2en" ? "#14532d30" : tc.dim + "40",
+                      borderBottom:
+                        "1px solid " + (mode === "sig2en" ? "#14532d" : tc.dim),
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: mode === "sig2en" ? "#4ade80" : tc.accent,
+                        fontWeight: 700,
+                        fontSize: 11,
+                        letterSpacing: "1px",
+                      }}
+                    >
+                      {mode === "en2sig"
+                        ? `ENCODED — ${toSys}`
+                        : mode === "sig2en"
+                        ? "DECODED — PLAIN ENGLISH"
+                        : `TRANSLATED — ${toSys}`}
+                    </span>
+                    <button
+                      onClick={() =>
+                        navigator.clipboard?.writeText(result.translatedSig)
+                      }
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#64748b",
+                        cursor: "pointer",
+                        fontSize: 12,
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      padding: 14,
+                      fontSize: mode === "sig2en" ? 15 : 16,
+                      fontFamily: mode === "sig2en" ? "inherit" : "monospace",
+                      color: "#fff",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {result.translatedSig}
+                  </div>
+                </div>
+
+                {/* Components grid */}
+                {(result.parsedComponents || result.decodedComponents) && (
+                  <div style={{ ...S.card, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        borderBottom: "1px solid #1e2d45",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#a5b4fc",
+                          fontWeight: 700,
+                          fontSize: 11,
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        🧩 COMPONENTS
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        padding: 12,
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 8,
+                      }}
+                    >
+                      {Object.entries(
+                        result.parsedComponents ||
+                          result.decodedComponents ||
+                          {}
+                      )
+                        .filter(([, v]) => v)
+                        .map(([k, v]) => (
+                          <div
+                            key={k}
+                            style={{
+                              background: "#060d1a",
+                              borderRadius: 8,
+                              padding: "8px 12px",
+                              border: "1px solid #1e2d45",
+                            }}
+                          >
+                            <div
+                              style={{
+                                color: "#475569",
+                                fontSize: 10,
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                marginBottom: 3,
+                              }}
+                            >
+                              {k}
+                            </div>
+                            <div style={{ color: "#c7d2fe", fontSize: 13 }}>
+                              {v}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mappings */}
+                {result.mappings && result.mappings.length > 0 && (
+                  <div style={{ ...S.card, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        borderBottom: "1px solid #1e2d45",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#4A90D9",
+                          fontWeight: 700,
+                          fontSize: 11,
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        🔄 CODE MAPPINGS
+                      </span>
+                    </div>
+                    <div style={{ padding: 10, display: "grid", gap: 6 }}>
+                      {result.mappings.map((m, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            gap: 10,
+                            alignItems: "center",
+                            padding: "8px 12px",
+                            background: "#060d1a",
+                            borderRadius: 8,
+                            border: "1px solid #1e2d45",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: "monospace",
+                              color: fc.accent,
+                              fontWeight: 700,
+                              minWidth: 80,
+                            }}
+                          >
+                            {m.original}
+                          </span>
+                          <span style={{ color: "#475569" }}>→</span>
+                          <span
+                            style={{
+                              fontFamily: "monospace",
+                              color: tc.accent,
+                              fontWeight: 700,
+                              minWidth: 80,
+                            }}
+                          >
+                            {m.translated}
+                          </span>
+                          <span
+                            style={{ color: "#64748b", fontSize: 12, flex: 1 }}
+                          >
+                            {m.label}
+                          </span>
+                          {m.confidence && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                padding: "2px 7px",
+                                borderRadius: 5,
+                                background: confColor(m.confidence),
+                                color: "#000",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {m.confidence}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Patient + Pharmacist */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      ...S.card,
+                      padding: 14,
+                      border: "1px solid #14532d",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#4ade80",
+                        fontWeight: 700,
+                        fontSize: 11,
+                        letterSpacing: "1px",
+                        marginBottom: 8,
+                      }}
+                    >
+                      💊 PATIENT LABEL
+                    </div>
+                    <p
+                      style={{
+                        color: "#86efac",
+                        fontSize: 13,
+                        lineHeight: 1.6,
+                        margin: 0,
+                      }}
+                    >
+                      {result.patientInstructions}
+                    </p>
+                  </div>
+                  <div
+                    style={{
+                      ...S.card,
+                      padding: 14,
+                      border: "1px solid #1e1b4b",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#a5b4fc",
+                        fontWeight: 700,
+                        fontSize: 11,
+                        letterSpacing: "1px",
+                        marginBottom: 8,
+                      }}
+                    >
+                      🔬 PHARMACIST NOTES
+                    </div>
+                    <p
+                      style={{
+                        color: "#c7d2fe",
+                        fontSize: 13,
+                        lineHeight: 1.6,
+                        margin: 0,
+                      }}
+                    >
+                      {result.pharmacistNotes}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Warnings */}
+                {result.warnings && result.warnings.length > 0 && (
+                  <div
+                    style={{
+                      ...S.card,
+                      padding: 14,
+                      border: "1px solid #7c2d12",
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: "#fb923c",
+                        fontWeight: 700,
+                        fontSize: 11,
+                        letterSpacing: "1px",
+                        marginBottom: 8,
+                      }}
+                    >
+                      ⚠️ CLINICAL FLAGS
+                    </div>
+                    {result.warnings.map((w, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          color: "#fdba74",
+                          fontSize: 13,
+                          marginBottom: 4,
+                        }}
+                      >
+                        • {w}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── LIBRARY ── */}
+        {tab === "library" && (
+          <div>
+            <div style={{ marginBottom: 18 }}>
+              <h2
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  margin: "0 0 4px",
+                  color: "#fff",
+                }}
+              >
+                SIG Code Library
+              </h2>
+              <p style={{ color: "#64748b", fontSize: 13, margin: 0 }}>
+                {ALL_CODES.length} codes across Universal, CVS, Walgreens, and
+                Walmart
+              </p>
+            </div>
+
+            {/* Filters */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto auto",
+                gap: 10,
+                marginBottom: 16,
+              }}
+            >
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search codes or descriptions..."
+                style={S.input}
+              />
+              <select
+                value={filterSys}
+                onChange={(e) => setFilterSys(e.target.value)}
+                style={{ ...S.input, width: "auto" }}
+              >
+                <option>All</option>
+                {SYSTEMS.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+              <select
+                value={filterCat}
+                onChange={(e) => setFilterCat(e.target.value)}
+                style={{ ...S.input, width: "auto" }}
+              >
+                {cats.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Stats */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4,1fr)",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              {SYSTEMS.map((s) => {
+                const col = gc(s);
+                return (
+                  <div
+                    key={s}
+                    onClick={() => setFilterSys(filterSys === s ? "All" : s)}
+                    style={{
+                      ...S.card,
+                      padding: "10px 14px",
+                      border: "1px solid " + col.dim,
+                      cursor: "pointer",
+                      opacity: filterSys !== "All" && filterSys !== s ? 0.4 : 1,
+                    }}
+                  >
+                    <div
+                      style={{
+                        color: col.accent,
+                        fontWeight: 800,
+                        fontSize: 20,
+                      }}
+                    >
+                      {CODE_DB[s].length}
+                    </div>
+                    <div
+                      style={{ color: col.text, fontSize: 11, fontWeight: 600 }}
+                    >
+                      {s}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Code grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))",
+                gap: 8,
+              }}
+            >
+              {filtered.slice(0, 200).map((code) => {
+                const col = gc(code.system);
+                return (
+                  <div
+                    key={code.system + code.code}
+                    style={{
+                      ...S.card,
+                      padding: "10px 12px",
+                      border: "1px solid #1e2d45",
+                      cursor: "default",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "monospace",
+                          fontWeight: 800,
+                          color: col.accent,
+                          fontSize: 13,
+                        }}
+                      >
+                        {code.code}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: col.dim,
+                          color: col.text,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {code.system}
+                      </span>
+                    </div>
+                    <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                      {code.label}
+                    </div>
+                    <div
+                      style={{ color: "#475569", fontSize: 11, marginTop: 2 }}
+                    >
+                      {code.category}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {filtered.length > 200 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  marginTop: 12,
+                  color: "#475569",
+                  fontSize: 13,
+                }}
+              >
+                Showing 200 of {filtered.length} — refine search to see more
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      <footer
+        style={{
+          textAlign: "center",
+          padding: 20,
+          borderTop: "1px solid #1e2d45",
+          color: "#374151",
+          fontSize: 11,
+          marginTop: 32,
+        }}
+      >
+        RxBridge · Capstone Project · For educational use only · Always verify
+        with a licensed pharmacist
+      </footer>
+    </div>
+  );
+}
